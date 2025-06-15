@@ -1,11 +1,14 @@
 "use client"
 
 import { useAuth } from "@/hooks/use-auth"
-import { AdminDashboard } from "@/components/dashboards/admin-dashboard"
-import { StaffDashboard } from "@/components/dashboards/staff-dashboard"
-import { StudentDashboard } from "@/components/dashboards/student-dashboard"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Loader2 } from "lucide-react"
+import { 
+  LazyAdminDashboard, 
+  LazyStaffDashboard, 
+  LazyStudentDashboard 
+} from "@/components/lazy-components"
+import { LazyComponent } from "@/lib/lazy-load"
 
 export default function DashboardPage() {
   const { user, isLoading } = useAuth()
@@ -25,15 +28,21 @@ export default function DashboardPage() {
   const renderDashboard = () => {
     switch (user.role) {
       case "admin":
-        return <AdminDashboard />
+        return <LazyAdminDashboard />
       case "staff":
-        return <StaffDashboard />
+        return <LazyStaffDashboard />
       case "student":
-        return <StudentDashboard />
+        return <LazyStudentDashboard />
       default:
-        return <StudentDashboard />
+        return <LazyStudentDashboard />
     }
   }
 
-  return <DashboardLayout>{renderDashboard()}</DashboardLayout>
+  return (
+    <DashboardLayout>
+      <LazyComponent>
+        {renderDashboard()}
+      </LazyComponent>
+    </DashboardLayout>
+  )
 }

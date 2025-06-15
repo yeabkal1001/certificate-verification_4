@@ -3,14 +3,14 @@
 import { useState, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { Navbar } from "@/components/navbar"
-import { QRScanner } from "@/components/qr-scanner"
 import { ManualVerification } from "@/components/manual-verification"
-import { VerificationResult } from "@/components/verification-result"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Shield, Scan, FileText } from "lucide-react"
 import { certificatesApi } from "@/lib/api/certificates"
 import type { VerificationResult as VerificationResultType } from "@/types/certificate"
+import { LazyQRScanner, LazyVerificationResult } from "@/components/lazy-components"
+import { LazyComponent } from "@/lib/lazy-load"
 
 export default function VerifyPage() {
   const [verificationResult, setVerificationResult] = useState<VerificationResultType | null>(null)
@@ -73,7 +73,9 @@ export default function VerifyPage() {
               <CardDescription>Scan the QR code on your certificate for instant verification</CardDescription>
             </CardHeader>
             <CardContent>
-              <QRScanner onScan={handleVerification} isLoading={isLoading} />
+              <LazyComponent>
+                <LazyQRScanner onScan={handleVerification} isLoading={isLoading} />
+              </LazyComponent>
             </CardContent>
           </Card>
 
@@ -96,7 +98,9 @@ export default function VerifyPage() {
         {verificationResult && (
           <div className="animate-fade-in">
             <Separator className="mb-8" />
-            <VerificationResult result={verificationResult} />
+            <LazyComponent>
+              <LazyVerificationResult result={verificationResult} />
+            </LazyComponent>
           </div>
         )}
 

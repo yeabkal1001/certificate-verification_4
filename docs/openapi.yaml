@@ -1,0 +1,1830 @@
+openapi: 3.0.3
+info:
+  title: Certificate Verification System API
+  description: |
+    API for managing and verifying digital certificates.
+    
+    This API provides endpoints for creating, managing, and verifying digital certificates,
+    as well as managing users, templates, and system configuration.
+  version: 1.0.0
+  contact:
+    name: Certificate Verification System Support
+    email: support@example.com
+    url: https://example.com/support
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://your-domain.com/api
+    description: Production server
+  - url: https://staging.your-domain.com/api
+    description: Staging server
+  - url: http://localhost:3000/api
+    description: Development server
+
+tags:
+  - name: Authentication
+    description: Authentication and user management endpoints
+  - name: Certificates
+    description: Certificate management endpoints
+  - name: Templates
+    description: Certificate template management endpoints
+  - name: Users
+    description: User management endpoints
+  - name: System
+    description: System management and monitoring endpoints
+
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login
+      description: Authenticates a user and returns a JWT token
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  token:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                  user:
+                    $ref: '#/components/schemas/UserBasic'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout
+      description: Logs out the current user by invalidating the token
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get Current User
+      description: Returns information about the currently authenticated user
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserDetailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/signup:
+    post:
+      tags:
+        - Authentication
+      summary: Register
+      description: Registers a new user
+      operationId: register
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: newuser@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                name:
+                  type: string
+                  example: Jane Doe
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User registered successfully
+                  user:
+                    $ref: '#/components/schemas/UserBasic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/csrf-token:
+    get:
+      tags:
+        - Authentication
+      summary: Get CSRF Token
+      description: Returns a CSRF token for form submission
+      operationId: getCsrfToken
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  csrfToken:
+                    type: string
+                    example: abc123def456
+                  expiresIn:
+                    type: integer
+                    example: 3600
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /certificates:
+    get:
+      tags:
+        - Certificates
+      summary: List Certificates
+      description: Returns a list of certificates based on query parameters
+      operationId: listCertificates
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
+        - name: recipient
+          in: query
+          description: Filter by recipient ID
+          schema:
+            type: string
+        - name: template
+          in: query
+          description: Filter by template ID
+          schema:
+            type: string
+        - name: issuer
+          in: query
+          description: Filter by issuer ID
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: Filter by status (active, revoked, expired)
+          schema:
+            type: string
+            enum: [active, revoked, expired]
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CertificateBasic'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Certificates
+      summary: Create Certificate
+      description: Creates a new certificate
+      operationId: createCertificate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - recipient_id
+                - template_id
+              properties:
+                recipient_id:
+                  type: string
+                  example: user456
+                template_id:
+                  type: string
+                  example: template789
+                issue_date:
+                  type: string
+                  format: date-time
+                  example: '2023-01-01T00:00:00Z'
+                expiry_date:
+                  type: string
+                  format: date-time
+                  example: '2024-01-01T00:00:00Z'
+                metadata:
+                  type: object
+                  example:
+                    course_name: Introduction to Programming
+                    grade: A
+                    credits: 3
+      responses:
+        '201':
+          description: Certificate created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Certificate created successfully
+                  data:
+                    $ref: '#/components/schemas/CertificateDetailed'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /certificates/{id}:
+    get:
+      tags:
+        - Certificates
+      summary: Get Certificate
+      description: Returns details of a specific certificate
+      operationId: getCertificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Certificate ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CertificateDetailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Certificates
+      summary: Update Certificate
+      description: Updates an existing certificate
+      operationId: updateCertificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Certificate ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expiry_date:
+                  type: string
+                  format: date-time
+                  example: '2025-01-01T00:00:00Z'
+                metadata:
+                  type: object
+                  example:
+                    course_name: Advanced Programming
+                    grade: A+
+                    credits: 4
+      responses:
+        '200':
+          description: Certificate updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Certificate updated successfully
+                  data:
+                    $ref: '#/components/schemas/CertificateDetailed'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /certificates/{id}/revoke:
+    post:
+      tags:
+        - Certificates
+      summary: Revoke Certificate
+      description: Revokes a certificate
+      operationId: revokeCertificate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Certificate ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                revocation_reason:
+                  type: string
+                  example: Certificate issued in error
+      responses:
+        '200':
+          description: Certificate revoked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Certificate revoked successfully
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: cert123
+                      revoked:
+                        type: boolean
+                        example: true
+                      revocation_reason:
+                        type: string
+                        example: Certificate issued in error
+                      updated_at:
+                        type: string
+                        format: date-time
+                        example: '2023-01-03T00:00:00Z'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /certificates/verify:
+    get:
+      tags:
+        - Certificates
+      summary: Verify Certificate
+      description: Verifies a certificate by its verification code
+      operationId: verifyCertificate
+      parameters:
+        - name: code
+          in: query
+          description: Certificate verification code
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  verified:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/CertificateVerification'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /templates:
+    get:
+      tags:
+        - Templates
+      summary: List Templates
+      description: Returns a list of certificate templates
+      operationId: listTemplates
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
+        - name: creator
+          in: query
+          description: Filter by creator ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateBasic'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Templates
+      summary: Create Template
+      description: Creates a new certificate template
+      operationId: createTemplate
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - html_template
+                - css_styles
+              properties:
+                name:
+                  type: string
+                  example: Professional Certification
+                description:
+                  type: string
+                  example: Template for professional certification certificates
+                html_template:
+                  type: string
+                  example: "<div class='certificate'>...</div>"
+                css_styles:
+                  type: string
+                  example: ".certificate { ... }"
+                default_metadata:
+                  type: object
+                  example:
+                    certification_name: ""
+                    certification_level: ""
+                    valid_for: 1 year
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Template created successfully
+                  data:
+                    $ref: '#/components/schemas/TemplateDetailed'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /templates/{id}:
+    get:
+      tags:
+        - Templates
+      summary: Get Template
+      description: Returns details of a specific template
+      operationId: getTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Template ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/TemplateDetailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Templates
+      summary: Update Template
+      description: Updates an existing template
+      operationId: updateTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Template ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Updated Course Completion
+                description:
+                  type: string
+                  example: Updated template for course completion certificates
+                html_template:
+                  type: string
+                  example: "<div class='certificate'>...</div>"
+                css_styles:
+                  type: string
+                  example: ".certificate { ... }"
+                default_metadata:
+                  type: object
+                  example:
+                    course_name: ""
+                    grade: ""
+                    credits: 0
+                    instructor: ""
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Template updated successfully
+                  data:
+                    $ref: '#/components/schemas/TemplateDetailed'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Templates
+      summary: Delete Template
+      description: Deletes a template
+      operationId: deleteTemplate
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: Template ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Template deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List Users
+      description: Returns a list of users
+      operationId: listUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
+        - name: role
+          in: query
+          description: Filter by role (ADMIN, STAFF, STUDENT)
+          schema:
+            type: string
+            enum: [ADMIN, STAFF, STUDENT]
+        - name: search
+          in: query
+          description: Search by name or email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserBasic'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags:
+        - Users
+      summary: Create User
+      description: Creates a new user
+      operationId: createUser
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - name
+                - role
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: newstaff@example.com
+                password:
+                  type: string
+                  format: password
+                  example: password123
+                name:
+                  type: string
+                  example: New Staff
+                role:
+                  type: string
+                  enum: [ADMIN, STAFF, STUDENT]
+                  example: STAFF
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User created successfully
+                  data:
+                    $ref: '#/components/schemas/UserBasic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get User
+      description: Returns details of a specific user
+      operationId: getUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    $ref: '#/components/schemas/UserDetailed'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Users
+      summary: Update User
+      description: Updates an existing user
+      operationId: updateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: John Student Updated
+                role:
+                  type: string
+                  enum: [ADMIN, STAFF, STUDENT]
+                  example: STAFF
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User updated successfully
+                  data:
+                    $ref: '#/components/schemas/UserBasic'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete User
+      description: Deletes a user
+      operationId: deleteUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          description: User ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: User deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /health:
+    get:
+      tags:
+        - System
+      summary: Health Check
+      description: Returns the health status of the system
+      operationId: healthCheck
+      responses:
+        '200':
+          description: System is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  version:
+                    type: string
+                    example: 1.0.0
+                  uptime:
+                    type: integer
+                    example: 86400
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2023-01-03T00:00:00Z'
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: connected
+                      redis:
+                        type: string
+                        example: connected
+                      storage:
+                        type: string
+                        example: connected
+        '503':
+          description: System is unhealthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: unhealthy
+                  version:
+                    type: string
+                    example: 1.0.0
+                  uptime:
+                    type: integer
+                    example: 86400
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2023-01-03T00:00:00Z'
+                  services:
+                    type: object
+                    properties:
+                      database:
+                        type: string
+                        example: disconnected
+                      redis:
+                        type: string
+                        example: connected
+                      storage:
+                        type: string
+                        example: connected
+                  error:
+                    type: string
+                    example: Database connection failed
+
+  /metrics:
+    get:
+      tags:
+        - System
+      summary: Metrics
+      description: Returns system metrics
+      operationId: getMetrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      certificates:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 1000
+                          active:
+                            type: integer
+                            example: 950
+                          revoked:
+                            type: integer
+                            example: 30
+                          expired:
+                            type: integer
+                            example: 20
+                          issued_today:
+                            type: integer
+                            example: 5
+                      users:
+                        type: object
+                        properties:
+                          total:
+                            type: integer
+                            example: 500
+                          admins:
+                            type: integer
+                            example: 5
+                          staff:
+                            type: integer
+                            example: 45
+                          students:
+                            type: integer
+                            example: 450
+                          active_today:
+                            type: integer
+                            example: 50
+                      verifications:
+                        type: object
+                        properties:
+                          total_today:
+                            type: integer
+                            example: 100
+                          successful:
+                            type: integer
+                            example: 95
+                          failed:
+                            type: integer
+                            example: 5
+                      system:
+                        type: object
+                        properties:
+                          cpu_usage:
+                            type: integer
+                            example: 25
+                          memory_usage:
+                            type: integer
+                            example: 40
+                          disk_usage:
+                            type: integer
+                            example: 30
+                          requests_per_minute:
+                            type: integer
+                            example: 60
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /instances:
+    get:
+      tags:
+        - System
+      summary: Instances
+      description: Returns information about running instances
+      operationId: getInstances
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      total_instances:
+                        type: integer
+                        example: 3
+                      instances:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id:
+                              type: string
+                              example: instance-1
+                            hostname:
+                              type: string
+                              example: app-1
+                            uptime:
+                              type: integer
+                              example: 86400
+                            version:
+                              type: string
+                              example: 1.0.0
+                            status:
+                              type: string
+                              example: healthy
+                            load:
+                              type: object
+                              properties:
+                                cpu:
+                                  type: integer
+                                  example: 25
+                                memory:
+                                  type: integer
+                                  example: 40
+                                requests:
+                                  type: integer
+                                  example: 20
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /db-stats:
+    get:
+      tags:
+        - System
+      summary: Database Statistics
+      description: Returns database statistics
+      operationId: getDatabaseStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    properties:
+                      tables:
+                        type: object
+                        properties:
+                          users:
+                            type: object
+                            properties:
+                              rows:
+                                type: integer
+                                example: 500
+                              size:
+                                type: string
+                                example: 1.2 MB
+                              last_vacuum:
+                                type: string
+                                format: date-time
+                                example: '2023-01-01T00:00:00Z'
+                          certificates:
+                            type: object
+                            properties:
+                              rows:
+                                type: integer
+                                example: 1000
+                              size:
+                                type: string
+                                example: 2.5 MB
+                              last_vacuum:
+                                type: string
+                                format: date-time
+                                example: '2023-01-01T00:00:00Z'
+                          templates:
+                            type: object
+                            properties:
+                              rows:
+                                type: integer
+                                example: 20
+                              size:
+                                type: string
+                                example: 0.5 MB
+                              last_vacuum:
+                                type: string
+                                format: date-time
+                                example: '2023-01-01T00:00:00Z'
+                          verification_logs:
+                            type: object
+                            properties:
+                              rows:
+                                type: integer
+                                example: 5000
+                              size:
+                                type: string
+                                example: 1.8 MB
+                              last_vacuum:
+                                type: string
+                                format: date-time
+                                example: '2023-01-01T00:00:00Z'
+                      performance:
+                        type: object
+                        properties:
+                          avg_query_time:
+                            type: integer
+                            example: 5
+                          slow_queries:
+                            type: integer
+                            example: 2
+                          connections:
+                            type: integer
+                            example: 10
+                          max_connections:
+                            type: integer
+                            example: 100
+                      status:
+                        type: object
+                        properties:
+                          uptime:
+                            type: integer
+                            example: 86400
+                          version:
+                            type: string
+                            example: 14.5
+                          size:
+                            type: string
+                            example: 10.5 MB
+                          last_backup:
+                            type: string
+                            format: date-time
+                            example: '2023-01-02T00:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /cache:
+    post:
+      tags:
+        - System
+      summary: Cache Management
+      description: Manages the cache
+      operationId: manageCache
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - action
+              properties:
+                action:
+                  type: string
+                  enum: [clear, invalidate]
+                  example: clear
+                key:
+                  type: string
+                  example: certificates:*
+      responses:
+        '200':
+          description: Request successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Cache cleared successfully
+                  data:
+                    type: object
+                    properties:
+                      keys_affected:
+                        type: integer
+                        example: 10
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  schemas:
+    UserBasic:
+      type: object
+      properties:
+        id:
+          type: string
+          example: user456
+        email:
+          type: string
+          format: email
+          example: student@example.com
+        name:
+          type: string
+          example: John Student
+        role:
+          type: string
+          enum: [ADMIN, STAFF, STUDENT]
+          example: STUDENT
+        created_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        last_login:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+
+    UserDetailed:
+      allOf:
+        - $ref: '#/components/schemas/UserBasic'
+        - type: object
+          properties:
+            certificates:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: cert123
+                  template_name:
+                    type: string
+                    example: Course Completion
+                  issue_date:
+                    type: string
+                    format: date-time
+                    example: '2023-01-01T00:00:00Z'
+                  expiry_date:
+                    type: string
+                    format: date-time
+                    example: '2024-01-01T00:00:00Z'
+                  status:
+                    type: string
+                    enum: [valid, revoked, expired]
+                    example: valid
+
+    CertificateBasic:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cert123
+        recipient_id:
+          type: string
+          example: user456
+        recipient_name:
+          type: string
+          example: John Student
+        template_id:
+          type: string
+          example: template789
+        template_name:
+          type: string
+          example: Course Completion
+        issuer_id:
+          type: string
+          example: admin001
+        issuer_name:
+          type: string
+          example: Admin User
+        verification_code:
+          type: string
+          example: ABC123XYZ
+        issue_date:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        expiry_date:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00Z'
+        revoked:
+          type: boolean
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+
+    CertificateDetailed:
+      allOf:
+        - $ref: '#/components/schemas/CertificateBasic'
+        - type: object
+          properties:
+            revocation_reason:
+              type: string
+              nullable: true
+              example: null
+            metadata:
+              type: object
+              example:
+                course_name: Introduction to Programming
+                grade: A
+                credits: 3
+            download_url:
+              type: string
+              example: /api/certificates/cert123/download
+            verification_url:
+              type: string
+              example: /verify/ABC123XYZ
+
+    CertificateVerification:
+      type: object
+      properties:
+        id:
+          type: string
+          example: cert123
+        recipient_name:
+          type: string
+          example: John Student
+        template_name:
+          type: string
+          example: Course Completion
+        issuer_name:
+          type: string
+          example: Admin User
+        issue_date:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        expiry_date:
+          type: string
+          format: date-time
+          example: '2024-01-01T00:00:00Z'
+        status:
+          type: string
+          enum: [valid, revoked, expired]
+          example: valid
+        metadata:
+          type: object
+          example:
+            course_name: Introduction to Programming
+            grade: A
+            credits: 3
+
+    TemplateBasic:
+      type: object
+      properties:
+        id:
+          type: string
+          example: template789
+        name:
+          type: string
+          example: Course Completion
+        description:
+          type: string
+          example: Template for course completion certificates
+        creator_id:
+          type: string
+          example: admin001
+        creator_name:
+          type: string
+          example: Admin User
+        created_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2023-01-01T00:00:00Z'
+        preview_url:
+          type: string
+          example: /api/templates/template789/preview
+
+    TemplateDetailed:
+      allOf:
+        - $ref: '#/components/schemas/TemplateBasic'
+        - type: object
+          properties:
+            html_template:
+              type: string
+              example: "<div class='certificate'>...</div>"
+            css_styles:
+              type: string
+              example: ".certificate { ... }"
+            default_metadata:
+              type: object
+              example:
+                course_name: ""
+                grade: ""
+                credits: 0
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 100
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        pages:
+          type: integer
+          example: 10
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: VALIDATION_ERROR
+            message:
+              type: string
+              example: Invalid input data
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: email
+                  message:
+                    type: string
+                    example: Must be a valid email address
+
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      description: Page number
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+
+    LimitParam:
+      name: limit
+      in: query
+      description: Number of items per page
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+
+    SortParam:
+      name: sort
+      in: query
+      description: Field to sort by
+      schema:
+        type: string
+        default: created_at
+
+    OrderParam:
+      name: order
+      in: query
+      description: Sort order
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: AUTHENTICATION_ERROR
+                  message:
+                    type: string
+                    example: Authentication required
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: AUTHORIZATION_ERROR
+                  message:
+                    type: string
+                    example: Not authorized to perform this action
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: NOT_FOUND
+                  message:
+                    type: string
+                    example: Resource not found
+
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: CONFLICT
+                  message:
+                    type: string
+                    example: Resource already exists or cannot be modified
+
+    TooManyRequests:
+      description: Too many requests
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+          description: Seconds to wait before retrying
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: RATE_LIMIT_EXCEEDED
+                  message:
+                    type: string
+                    example: Too many requests, please try again later
+                  retryAfter:
+                    type: integer
+                    example: 60
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: INTERNAL_ERROR
+                  message:
+                    type: string
+                    example: Internal server error
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

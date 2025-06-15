@@ -1,38 +1,51 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from 'next/server';
+import { PrismaClient } from '@prisma/client';
+import { createClient } from 'redis';
 
+// Initialize Prisma client
 const prisma = new PrismaClient();
 
-export async function GET() {
+// Initialize Redis client
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+const redis = createClient({ url: redisUrl });
+
+export async function GET(req: NextRequest) {
+  const healthStatus = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    instance: process.env.INSTANCE_ID || 'default',
+    services: {
+      database: 'unknown',
+      redis: 'unknown',
+    },
+  };
+
+  // Check database connection
   try {
-    // Check database connection
     await prisma.$queryRaw`SELECT 1`;
-    
-    return NextResponse.json(
-      {
-        status: "ok",
-        timestamp: new Date().toISOString(),
-        services: {
-          database: "up",
-          api: "up",
-        },
-      },
-      { status: 200 }
-    );
+    healthStatus.services.database = 'healthy';
   } catch (error) {
-    console.error("Health check failed:", error);
-    
-    return NextResponse.json(
-      {
-        status: "error",
-        timestamp: new Date().toISOString(),
-        services: {
-          database: error instanceof Error ? "down" : "unknown",
-          api: "up",
-        },
-        error: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    healthStatus.services.database = 'unhealthy';
+    healthStatus.status = 'degraded';
   }
+
+  // Check Redis connection
+  try {
+    if (!redis.isOpen) {
+      await redis.connect();
+    }
+    await redis.ping();
+    healthStatus.services.redis = 'healthy';
+  } catch (error) {
+    healthStatus.services.redis = 'unhealthy';
+    healthStatus.status = 'degraded';
+  } finally {
+    if (redis.isOpen) {
+      await redis.disconnect();
+    }
+  }
+
+  // Return health status
+  return NextResponse.json(healthStatus);
 }
