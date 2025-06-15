@@ -1,0 +1,107 @@
+groups:
+  - name: certificate-verification-alerts
+    rules:
+      # Host-level alerts
+      - alert: HighCPULoad
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU load (instance {{ $labels.instance }})"
+          description: "CPU load is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage (instance {{ $labels.instance }})"
+          description: "Memory usage is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      - alert: HighDiskUsage
+        expr: (node_filesystem_size_bytes{fstype!="tmpfs"} - node_filesystem_free_bytes{fstype!="tmpfs"}) / node_filesystem_size_bytes{fstype!="tmpfs"} * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High disk usage (instance {{ $labels.instance }})"
+          description: "Disk usage is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      # Container-specific alerts
+      - alert: ContainerHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name!=""}[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container high CPU usage (instance {{ $labels.instance }})"
+          description: "Container {{ $labels.name }} CPU usage is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      - alert: ContainerHighMemoryUsage
+        expr: container_memory_usage_bytes{name!=""} / container_spec_memory_limit_bytes{name!=""} * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Container high memory usage (instance {{ $labels.instance }})"
+          description: "Container {{ $labels.name }} memory usage is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      # Application-specific alerts
+      - alert: HighAPILatency
+        expr: http_request_duration_seconds{quantile="0.9"} > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High API latency (instance {{ $labels.instance }})"
+          description: "90th percentile of HTTP request duration is > 1s\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate (instance {{ $labels.instance }})"
+          description: "Error rate is > 5%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      # Database-specific alerts
+      - alert: PostgreSQLHighConnections
+        expr: pg_stat_activity_count / pg_settings_max_connections * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL high connections (instance {{ $labels.instance }})"
+          description: "PostgreSQL connections are > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      - alert: PostgreSQLSlowQueries
+        expr: pg_stat_activity_max_tx_duration > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "PostgreSQL slow queries (instance {{ $labels.instance }})"
+          description: "PostgreSQL queries are running for > 60s\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      # Redis-specific alerts
+      - alert: RedisHighMemoryUsage
+        expr: redis_memory_used_bytes / redis_memory_max_bytes * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis high memory usage (instance {{ $labels.instance }})"
+          description: "Redis memory usage is > 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+      # Service availability alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service down (instance {{ $labels.instance }})"
+          description: "Service {{ $labels.job }} is down\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"

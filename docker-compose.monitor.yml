@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  resource-monitor:
+    image: alpine:latest
+    container_name: resource-monitor
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./scripts:/scripts
+      - ./logs:/logs
+    environment:
+      - THRESHOLD_CPU=${THRESHOLD_CPU:-80}
+      - THRESHOLD_MEM=${THRESHOLD_MEM:-80}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-300}
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      # Install required tools
+      apk add --no-cache docker-cli bc curl mailx
+      
+      # Run monitoring script
+      /scripts/monitor-resources.sh
+      "
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external: true

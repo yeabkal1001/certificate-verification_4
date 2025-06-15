@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    restart: unless-stopped
+    command:
+      - '-nginx.scrape-uri=http://nginx/nginx_status'
+    ports:
+      - "9113:9113"
+    networks:
+      - monitoring-network
+      - app-network
+    depends_on:
+      - nginx
+    deploy:
+      resources:
+        limits:
+          cpus: '${NGINX_EXPORTER_CPU_LIMIT:-0.1}'
+          memory: '${NGINX_EXPORTER_MEMORY_LIMIT:-32M}'
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    ports:
+      - "9121:9121"
+    networks:
+      - monitoring-network
+      - app-network
+    depends_on:
+      - redis
+    deploy:
+      resources:
+        limits:
+          cpus: '${REDIS_EXPORTER_CPU_LIMIT:-0.1}'
+          memory: '${REDIS_EXPORTER_MEMORY_LIMIT:-32M}'
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_verification}?sslmode=disable
+    ports:
+      - "9187:9187"
+    networks:
+      - monitoring-network
+      - app-network
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          cpus: '${POSTGRES_EXPORTER_CPU_LIMIT:-0.1}'
+          memory: '${POSTGRES_EXPORTER_MEMORY_LIMIT:-32M}'
+
+networks:
+  monitoring-network:
+    external: true
+  app-network:
+    external: true

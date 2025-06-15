@@ -1,0 +1,249 @@
+version: '3.8'
+
+services:
+  app1:
+    image: certificate-verification-app
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_verification}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - CERTIFICATE_SECRET=${CERTIFICATE_SECRET}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - INSTANCE_ID=app1
+      - PRISMA_CONNECTION_LIMIT=${PRISMA_CONNECTION_LIMIT:-10}
+      - REDIS_MAX_CLIENTS=${REDIS_MAX_CLIENTS:-5}
+    deploy:
+      resources:
+        limits:
+          cpus: '${APP_CPU_LIMIT:-0.5}'
+          memory: '${APP_MEMORY_LIMIT:-512M}'
+        reservations:
+          cpus: '${APP_CPU_RESERVATION:-0.1}'
+          memory: '${APP_MEMORY_RESERVATION:-128M}'
+    ports:
+      - "3001:3000"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - app-logs:/app/logs
+
+  app2:
+    image: certificate-verification-app
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_verification}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - CERTIFICATE_SECRET=${CERTIFICATE_SECRET}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - INSTANCE_ID=app2
+      - PRISMA_CONNECTION_LIMIT=${PRISMA_CONNECTION_LIMIT:-10}
+      - REDIS_MAX_CLIENTS=${REDIS_MAX_CLIENTS:-5}
+    deploy:
+      resources:
+        limits:
+          cpus: '${APP_CPU_LIMIT:-0.5}'
+          memory: '${APP_MEMORY_LIMIT:-512M}'
+        reservations:
+          cpus: '${APP_CPU_RESERVATION:-0.1}'
+          memory: '${APP_MEMORY_RESERVATION:-128M}'
+    ports:
+      - "3002:3000"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - app-logs:/app/logs
+
+  app3:
+    image: certificate-verification-app
+    restart: always
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-certificate_verification}?schema=public
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - JWT_SECRET=${JWT_SECRET}
+      - CERTIFICATE_SECRET=${CERTIFICATE_SECRET}
+      - RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS:-60000}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - INSTANCE_ID=app3
+      - PRISMA_CONNECTION_LIMIT=${PRISMA_CONNECTION_LIMIT:-10}
+      - REDIS_MAX_CLIENTS=${REDIS_MAX_CLIENTS:-5}
+    deploy:
+      resources:
+        limits:
+          cpus: '${APP_CPU_LIMIT:-0.5}'
+          memory: '${APP_MEMORY_LIMIT:-512M}'
+        reservations:
+          cpus: '${APP_CPU_RESERVATION:-0.1}'
+          memory: '${APP_MEMORY_RESERVATION:-128M}'
+    ports:
+      - "3003:3000"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - app-logs:/app/logs
+
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-certificate_verification}
+      - POSTGRES_MAX_CONNECTIONS=${POSTGRES_MAX_CONNECTIONS:-100}
+      - POSTGRES_SHARED_BUFFERS=${POSTGRES_SHARED_BUFFERS:-128MB}
+      - POSTGRES_WORK_MEM=${POSTGRES_WORK_MEM:-4MB}
+      - POSTGRES_MAINTENANCE_WORK_MEM=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+      - POSTGRES_EFFECTIVE_CACHE_SIZE=${POSTGRES_EFFECTIVE_CACHE_SIZE:-512MB}
+      - POSTGRES_RANDOM_PAGE_COST=${POSTGRES_RANDOM_PAGE_COST:-1.1}
+      - POSTGRES_CHECKPOINT_COMPLETION_TARGET=${POSTGRES_CHECKPOINT_COMPLETION_TARGET:-0.9}
+      - POSTGRES_WAL_BUFFERS=${POSTGRES_WAL_BUFFERS:-16MB}
+      - POSTGRES_DEFAULT_STATISTICS_TARGET=${POSTGRES_DEFAULT_STATISTICS_TARGET:-100}
+    deploy:
+      resources:
+        limits:
+          cpus: '${DB_CPU_LIMIT:-1.0}'
+          memory: '${DB_MEMORY_LIMIT:-1G}'
+        reservations:
+          cpus: '${DB_CPU_RESERVATION:-0.2}'
+          memory: '${DB_MEMORY_RESERVATION:-256M}'
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/db-config:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    command: redis-server --maxmemory ${REDIS_MAXMEMORY:-100mb} --maxmemory-policy ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+    deploy:
+      resources:
+        limits:
+          cpus: '${REDIS_CPU_LIMIT:-0.3}'
+          memory: '${REDIS_MEMORY_LIMIT:-256M}'
+        reservations:
+          cpus: '${REDIS_CPU_RESERVATION:-0.1}'
+          memory: '${REDIS_MEMORY_RESERVATION:-64M}'
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '${NGINX_CPU_LIMIT:-0.3}'
+          memory: '${NGINX_MEMORY_LIMIT:-128M}'
+        reservations:
+          cpus: '${NGINX_CPU_RESERVATION:-0.1}'
+          memory: '${NGINX_MEMORY_RESERVATION:-64M}'
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/logs:/var/log/nginx
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      - app1
+      - app2
+      - app3
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: "/bin/sh -c 'mkdir -p /var/cache/nginx/static_cache /var/cache/nginx/api_cache && while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./nginx/certbot/conf:/etc/letsencrypt
+      - ./nginx/certbot/www:/var/www/certbot
+    depends_on:
+      - nginx
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  app-logs:
+  db-backups:
+    name: certificate-verification-db-backups
+  nginx-cache:
+    name: certificate-verification-nginx-cache
